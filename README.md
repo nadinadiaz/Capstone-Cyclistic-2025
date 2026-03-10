@@ -4,6 +4,13 @@
 ![R](https://img.shields.io/badge/R-276DC3?style=for-the-badge&logo=r&logoColor=white)
 ![Tidyverse](https://img.shields.io/badge/Tidyverse-white?style=for-the-badge&logo=tidyverse&logoColor=276DC3)
 ![Big Data](https://img.shields.io/badge/Data_Volume-6M+_Rows-informational)
+> **Recursos Rápidos:**
+> * 📄 [Ver Presentación Ejecutiva (PDF)](https://a33cffa9-a4df-4bcb-b641-0f7b755aca9c.lovableproject.com/docs/Comportamiento_de_usuarios_en_Cyclistic.pdf)
+> * 📊 [Ver Reporte Interactivo con Gráficos (HTML)](https://htmlpreview.github.io/?https://github.com/nadinadiaz/Google-Data-Analytics-Capstone-Project/blob/main/Capstone1v2.html)
+> * 💻 [Explorar Código Fuente (R Markdown)](https://github.com/nadinadiaz/Google-Data-Analytics-Capstone-Project/blob/main/TU_ARCHIVO.Rmd)
+
+---
+
 
 ## 📌 Descripción del Proyecto
 Este proyecto es el **Capstone de la Certificación de Google Data Analytics**. El objetivo estratégico es identificar las diferencias de comportamiento entre **miembros anuales** y **usuarios casuales** de Cyclistic para diseñar una estrategia de marketing basada en datos que incremente la tasa de conversión.
