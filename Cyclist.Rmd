@@ -1,0 +1,226 @@
+---
+title: "Cyclistic 2025 – Análisis de Comportamiento y Recomendaciones Estratégicas"
+author: "Nadina Díaz"
+date: "`r format(Sys.Date(), '%d-%m-%Y')`"
+
+# Definir la ruta de los archivos (usar ruta relativa para portabilidad)
+
+params:
+ ruta: "./data" 
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+    number_sections: true
+  pdf_document:
+    toc: true
+---
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE,
+      message = FALSE,
+  warning = FALSE    )
+
+# 🔒 Bloqueo de zona horaria estable
+Sys.setenv(TZ = "UTC")
+
+# 🔒 Bloqueo de locale para evitar tildes rotas
+Sys.setlocale("LC_TIME", "C")
+```
+
+## Introducción
+
+La empresa bicicletas compartidas de Chicago, **Cyclistic** quiere aumentar la rentabilidad y para lograr esto quieren transformar los socios ocasionales en socios anuales, ya que los analistas financieros concluyeron que estos eran más valiosos desde el punto de vista financiero.
+El propósito de este proyecto es analizar los patrones de uso y comportamiento de los usuarios ocasionales y los usuarios anuales para detectar el uso que le dan a las bicicletas de Cyclistic. Esto permitirá diseñar estrategia de marketing para convertir a los usuarios ocasionales en usuarios anuales
+
+## Fuentes de Datos Utilizadas
+
+Para identificar los patrones de uso de las bicicletas, se utilizaron los datos de viajes de Cyclistic correspondientes a los **últimos doce meses disponibles** a la fecha del análisis (enero de 2026). Este período abarca los registros históricos completos del año 2025. La selección de un período anual completo permite reducir el sesgo estacional y contar con información reciente y representativa, adecuada para respaldar la toma de decisiones actuales.
+
+*Los datos son públicos y han sido proporcionados por Motivate International Inc.*
+
+## Preparación de los Datos (Setting up)
+```{r }
+
+library(tidyverse)
+library(lubridate)
+
+```
+
+```{r include=FALSE}
+# === 1. Listar archivos CSV del año 2025 ===
+archivos_2025 <- list.files(
+  path = params$ruta,
+  pattern = "\\.csv$",
+  full.names = TRUE
+)
+
+# === 2. Unir datasets y estandarizar fechas ===
+tabla_maestra <- archivos_2025 %>%
+  map_df(~ read_csv(.x, show_col_types = FALSE)) %>%
+  mutate(
+    started_at = ymd_hms(started_at, tz = "UTC"),
+    ended_at   = ymd_hms(ended_at,   tz = "UTC")
+  )
+glimpse(tabla_maestra)
+```
+
+## Limpieza y Procesamiento de Datos
+
+```{r }
+# Limpieza y Transformación Definitiva 
+
+tabla_final <- tabla_maestra %>%
+  
+  # === Variables temporales ===
+  mutate(
+    ride_duration_min = as.numeric(difftime(ended_at, started_at, units = "mins")),
+    dow_num  = wday(started_at, week_start = 1),
+    month_num = month(started_at),
+    hour = hour(started_at),
+    
+   # Día de la semana (factor ordenado)
+    day_of_week = factor(
+      c("lunes","martes","miercoles","jueves","viernes","sabado","domingo")[dow_num],
+      levels = c("lunes","martes","miercoles","jueves","viernes","sabado","domingo")
+    ),
+    
+    # Mes (factor ordenado)
+    month = factor(
+      c("enero","febrero","marzo","abril","mayo","junio",
+        "julio","agosto","septiembre","octubre","noviembre","diciembre")[month_num],
+      levels = c("enero","febrero","marzo","abril","mayo","junio",
+                 "julio","agosto","septiembre","octubre","noviembre","diciembre")
+    )
+  ) %>%
+  
+  # === Remover duplicados por ID ===
+  distinct(ride_id, .keep_all = TRUE) %>%
+  
+    # === Filtrar viajes inválidos ===
+  filter(
+    ride_duration_min >= 1,
+    ride_duration_min <= 300
+  ) %>%
+  
+ # === Remover columnas no utilizadas ===
+  select(-start_lat, -start_lng, -end_lat, -end_lng)
+
+```
+Se aplicó un filtro para excluir viajes menores a 1 minuto (falsos inicios) y mayores a 5 horas (casos atípicos), asegurando que el análisis de promedios refleje el comportamiento real de uso del servicio
+
+
+## Análisis Exploratorio
+### Distribución general de usuarios
+
+
+```{r}
+tabla_final %>%
+  group_by(member_casual) %>%
+  summarise(
+    cantidad_viajes = n(),
+    promedio_duracion = mean(ride_duration_min),
+    median_duracion = median(ride_duration_min),
+    porcentaje = n() / nrow(tabla_final) * 100,
+    sd_duracion = sd(ride_duration_min)
+  )
+```
+
+*Aunque los miembros representan el 64.5% del total de viajes, los usuarios casuales realizan recorridos un 58% más largos, reforzando su perfil recreativo y mostrando un alto potencial de conversión hacia planes anuales*
+
+### Patrones semanales
+
+```{r}
+tabla_final %>%
+  count(day_of_week, member_casual) %>%
+  group_by(member_casual) %>%
+  mutate(prop = n / sum(n)) %>%
+  
+  ggplot(aes(day_of_week, prop, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(labels = scales::percent) + 
+  
+  labs(title = "Viajes por Día de la Semana en Porcentaje",
+       subtitle = "Uso recreativo vs. Uso por transporte diario",
+       x = "Día de la Semana",
+       y = "Porcentaje de Viajes por Grupo",
+              fill= "Tipo de Usuario") +
+  
+  theme_minimal() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5)
+        )
+```
+
+*Existe una clara división de hábitos: los socios dominan la semana hábil y los casuales el fin de semana. El pico de demanda del sábado representa la mayor oportunidad para ofrecer planes de membresía orientados al tiempo libre*
+
+### Patrones horarios
+```{r}
+tabla_final %>%
+  count(hour, member_casual) %>%
+  
+  ggplot(aes(x = hour, y = n, color = member_casual)) +
+  geom_line(size = 1.2) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_continuous(breaks = seq(0, 23, by = 2)) +
+  
+  labs(title = "Patrón Horario de Uso",
+       x = "Hora del Día",
+       y = "Número de Viajes",
+       color= "Tipo de Usuario") +
+
+  theme_minimal() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5)
+        )
+```
+
+*Los miembros presentan picos definidos en horarios laborales (8 AM y 5 PM), en tanto que los casuales muestran un incremento progresivo durante la tarde, alcanzando su máximo entre las 17–18 hs. Este comportamiento subraya un uso predominantemente recreativo o social.*
+
+### Estacionalidad
+```{r}
+tabla_final %>%
+  count(month, member_casual) %>%
+  ggplot(aes(x = month, y = n, color = member_casual, group = member_casual)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+    labs(
+    title = "Estacionalidad del Uso de Bicicletas",
+    subtitle = "Tendencias Mensuales del Año",
+    x = "Mes",
+    y = "Cantidad de viajes",
+    color= "Tipo de Usuario"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5)
+  )+
+  scale_y_continuous(labels = scales::comma, expand = expansion(mult = c(0.05, 0.1)))
+```
+
+*El uso de Cyclistic presenta una marcada estacionalidad, con un pico máximo durante los meses de verano. Los usuarios casuales muestran una sensibilidad mucho mayor a las condiciones climáticas, mientras que los miembros mantienen un uso estable durante todo el año. Esto representa una oportunidad clave para impulsar campañas de conversión en la previa y durante la temporada alta, cuando el interés por el uso recreativo alcanza su punto máximo*
+
+## Hallazgos clave
+
+1. Los miembros explican el 64.5% del volumen total.
+2. Los casuales muestran mayor duración promedio de viaje.
+3. Picos laborales para miembros y recreativos para casuales.
+4. Fuerte estacionalidad con máximo en verano.
+
+## Recomendaciones
+
+* Implementar un comparador de costos para mostrar cuánto ahorran los casuales con una membresía anual, dado que sus viajes son 58% más largos.
+* Incentivar el uso vespertino con beneficios y alianzas con comercios/turismo, aprovechando el aumento de demanda casual en ese horario.
+* Ofrecer un pase exclusivo para fines de semana y feriados, alineado al pico de uso casual de los sábados, como puerta de entrada a membresías anuales.
+* Realizar campañas de conversión en temporada alta, destacando que la membresía se paga sola con pocos viajes largos en verano.
+
+## Conclusiones finales
+
+**Con un enfoque basado en datos, Cyclistic puede transformar el uso ocasional en lealtad anual, impulsando un crecimiento sostenible, predecible y alineado con los hábitos reales de sus usuarios.**
+
+
+
