@@ -6,7 +6,7 @@
 ![Big Data](https://img.shields.io/badge/Data_Volume-6M+_Rows-informational)
 
 > ## 🔎 Recursos del Proyecto
-> * 📄 [Ver Presentación Ejecutiva (PDF)](https://(https://nadinadiaz-github-io.vercel.app/docs/Comportamiento_de_usuarios_en_Cyclistic.pdf))
+> * 📄 [Ver Presentación Ejecutiva (PDF)](https://nadinadiaz-github-io.vercel.app/docs/Comportamiento_de_usuarios_en_Cyclistic.pdf)
 > * 📊 [Ver Reporte Interactivo con Gráficos (HTML)](https://htmlpreview.github.io/?https://github.com/nadinadiaz/Google-Data-Analytics-Capstone-Project/blob/main/Capstone1v2.html)
 > * 💻 [Explorar Código Fuente (R Markdown)](https://github.com/nadinadiaz/Capstone-Cyclistic-2025/blob/main/Cyclist.Rmd)
 
